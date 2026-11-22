@@ -181,7 +181,7 @@ const macros=n=>{const t=n.c*4+n.p*4+n.f*9||1;return [['Kohlenhydrate',n.c,n.c*4
 const tbl=n=>`<table><tr><td>Kalorien</td><td>${r(n.k)} kcal</td></tr><tr><td>Eiweiß</td><td>${r1(n.p)} g</td></tr><tr><td>Kohlenhydrate</td><td>${r1(n.c)} g</td></tr><tr><td>Fett</td><td>${r1(n.f)} g</td></tr></table>`;
 const findE=id=>Object.values(S.log).flat().find(e=>e.id==id);
 const recent=m=>{const seen={},o=[];Object.keys(S.log).sort().reverse().forEach(k=>S.log[k].slice().reverse().forEach(e=>{const s=e.items?'p'+e.n:e.fid;if(e.meal!=m||seen[s]||o.length>=15)return;seen[s]=1;o.push(e)}));return o};
-const res=q=>{q=q.trim().toLowerCase();const e=topv().t=='ed';return (q?S.foods.filter(f=>f.n.toLowerCase().includes(q)).slice(0,20):[]).map(f=>`<div class="row" data-a="${e?'ingr':'pick'}" data-id="${f.id}"><div><b>${esc(f.n)}</b><small>${r(f.k)} kcal je 100 g</small></div></div>`).join('')+(q?`<div class="row" data-a="nf"><div><b>+ Eigenes Lebensmittel anlegen</b></div></div>`:'')};
+const res=q=>{q=q.trim().toLowerCase();const e=topv().t=='ed';return (q?S.foods.filter(f=>f.n.toLowerCase().includes(q)).sort((a,b)=>(a.n.toLowerCase().startsWith(q)?0:1)-(b.n.toLowerCase().startsWith(q)?0:1)||a.n.length-b.n.length).slice(0,25):[]).map(f=>`<div class="row" data-a="${e?'ingr':'pick'}" data-id="${f.id}"><div><b>${esc(f.n)}</b><small>${r(f.k)} kcal je 100 g</small></div></div>`).join('')+(q.length>2?`<div class="row" data-a="offs"><div><b>🌐 Online suchen</b><small>Open Food Facts, braucht Internet</small></div></div>`:'')+(q?`<div class="row" data-a="nf"><div><b>+ Eigenes Lebensmittel anlegen</b></div></div>`:'')};
 const li=(src,e)=>{const n=e.items?mul(itN(e.items),e.por||1):eN(e);return `<div class="row"><div data-a="rname" data-src="${src}" data-id="${e.id}"><b>${esc(en(e))}</b><small>${r(n.k)} kcal${e.items?'':' · '+e.amt+' g'}</small></div><button class="plus" data-a="radd" data-src="${src}" data-id="${e.id}">+</button></div>`};
 
 function diary(){const k=key(V.date),es=S.log[k]||[],t=es.reduce((s,e)=>pl(s,eN(e)),Z),b=bn(k),g=goal(),l=g+b-t.k,m=mt(b),sp=S.sport[k]||[];
@@ -292,6 +292,8 @@ case'phx2':V.pst=null;break;
 case'phs2':{(V.pst||[]).forEach(k=>S.ph.filter(p=>p.k==k).forEach(p=>p.pl=d.v));V.pst=null;break}
 case'phk':{const k=V.pdy.k,nk=($('#pdd').value)||k,pv=$('#pdp').value,av=$('#pda').value,L=S.ph.filter(p=>p.k==k);let pl=pv;if(!pl&&nk!=k)pl=phAuto(nk,L);L.forEach(p=>p.k=nk);if(pl)S.ph.filter(p=>p.k==nk).forEach(p=>p.pl=pl);delete S.pd[k];if(av)S.pd[nk]=av;else delete S.pd[nk];V.pdy=null;break}
 case'bcs':bcOpen();return
+case'offs':offSearch(s.q);return
+case'offp':{const p=(V.of||[])[+d.n];if(p)offNf(p);break}
 case'phv':if(V.phl){V.phl=0;return}V.phv=d.k;break;
 case'phc':V.phv=null;break;
 case'phd':S.ph=S.ph.filter(x=>x.id!=d.id);phDel(d.id);break;
@@ -602,7 +604,7 @@ return `<div class="wrap" style="height:100vh;overflow:hidden"><div class="hd"><
 S.sh=S.sh||{lists:[],cur:null,set:{hd:0,rc:1,vb:1}};const shU={dr:0,mn:0,lp:null,pr:null,q:'',scr:'list',tab:'list',qe:null,pp:{},an:0,lpd:0};
 const shC=[['obst','Obst & Gemüse','#43a047','<path d="M12 7c-2-2-6-1-6 4 0 4 3 8 6 8s6-4 6-8c0-5-4-6-6-4z"/><path d="M12 7c0-2 1-3 3-4"/>'],['brot','Brot & Backwaren','#d28b3c','<path d="M5 11a4 4 0 0 1 2-7h10a4 4 0 0 1 2 7v8H5z"/>'],['fleisch','Fleisch & Fisch','#e8588a','<path d="M15 4a5 5 0 0 1 1 8l-4 4-4-4 4-4a5 5 0 0 1 3-4z"/><path d="M8 16l-3 3M6 14l-2 2"/>'],['milch','Milch, Käse & Eier','#4a9fe0','<path d="M8 3h8l1 4v14H7V7z"/><path d="M7 11h10"/>'],['nudeln','Nudeln, Reis & Konserven','#c9a227','<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M8 7c0-2 2-2 2-4M13 7c0-2 2-2 2-4"/>'],['fruh','Frühstück & Aufstrich','#f07a3a','<path d="M5 8h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5zM16 9h2a2 2 0 0 1 0 5h-2"/>'],['snack','Snacks & Süßes','#ec6b6b','<circle cx="12" cy="12" r="8"/><path d="M9 10h.01M14 9h.01M11 14h.01M15 14h.01"/>'],['gewuerz','Öl, Soßen & Gewürze','#8d9b2f','<path d="M8 4h8v3H8zM7 7h10v13H7z"/><path d="M7 12h10"/>'],['haus','Haushalt & Drogerie','#5c7cfa','<path d="M5 8h14v12H5zM9 8V5h6v3"/>'],['getr','Getränke','#1fa5a5','<path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/>'],['tk','Tiefkühl','#5aaee6','<path d="M12 3v18M4 7.5l16 9M4 16.5l16-9"/>'],['son','Sonstiges','#8a8a8a','<circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/>']];
 const shK=Object.fromEntries(shC.map((c,i)=>[c[0],{i,n:c[1],c:c[2],p:c[3]}]));
-const shD={obst:'Kartoffeln,Zwiebeln,Knoblauch,Tomaten,Gurke,Paprika,Karotten,Brokkoli,Salat,Zucchini,Champignons,Spinat,Äpfel,Bananen,Orangen,Zitronen,Trauben,Beeren,Avocado,Ingwer,Lauch,Blumenkohl,Süßkartoffeln,Birnen,Kiwi,Mango,Kräuter',brot:'Brot,Vollkornbrot,Brötchen,Toast,Baguette,Wraps,Croissants',fleisch:'Hähnchenbrust,Hähnchenschenkel,Hackfleisch,Rindfleisch,Schweinefleisch,Wurst,Schinken,Salami,Lachs,Thunfisch,Speck,Putenbrust,Garnelen',milch:'Milch,Eier,Butter,Joghurt,Skyr,Magerquark,Quark,Sahne,Käse,Gouda,Mozzarella,Frischkäse,Parmesan,Feta,Schmand,Hüttenkäse',nudeln:'Nudeln,Reis,Haferflocken,Mehl,Zucker,Linsen,Kidneybohnen,Mais,Passierte Tomaten,Kichererbsen,Couscous,Kartoffelpüree',fruh:'Müsli,Marmelade,Honig,Nutella,Erdnussbutter,Kaffee,Tee,Kakao,Cornflakes,Proteinpulver,Proteinriegel',snack:'Chips,Schokolade,Gummibärchen,Nüsse,Kekse,Salzstangen,Studentenfutter',gewuerz:'Olivenöl,Salz,Pfeffer,Paprikapulver,Essig,Ketchup,Senf,Mayonnaise,Sojasoße,Brühe,Currypulver,Zimt,Öl',haus:'Toilettenpapier,Küchenrolle,Spülmittel,Waschmittel,Zahnpasta,Duschgel,Shampoo,Müllbeutel,Spülmaschinentabs,Seife,Deo,Batterien',getr:'Wasser,Mineralwasser,Saft,Cola,Bier,Wein,Apfelschorle,Energy Drink,Sprudel',tk:'Tiefkühlpizza,Tiefkühlgemüse,Pommes,Tiefkühlbeeren,Fischstäbchen,Eiscreme,Tiefkühlspinat'};
+const shD={obst:'Kartoffeln,Süßkartoffeln,Zwiebeln,Rote Zwiebeln,Frühlingszwiebeln,Knoblauch,Tomaten,Cherrytomaten,Rispentomaten,Gurke,Salatgurke,Paprika,Mini-Paprika,Karotten,Brokkoli,Blumenkohl,Salat,Eisbergsalat,Feldsalat,Rucola,Babyspinat,Spinat,Salatmix,Zucchini,Aubergine,Champignons,Pilze,Lauch,Kohlrabi,Rotkohl,Weißkohl,Spitzkohl,Grünkohl,Rosenkohl,Spargel,Radieschen,Rote Bete,Sellerie,Fenchel,Kürbis,Pak Choi,Mangold,Sprossen,Suppengrün,Ingwer,Chili,Petersilie,Basilikum,Schnittlauch,Koriander,Minze,Dill,Thymian,Rosmarin,Kräuter,Äpfel,Birnen,Bananen,Orangen,Mandarinen,Clementinen,Zitronen,Limetten,Grapefruit,Trauben,Erdbeeren,Himbeeren,Heidelbeeren,Brombeeren,Beeren,Kirschen,Pfirsiche,Nektarinen,Pflaumen,Aprikosen,Ananas,Wassermelone,Honigmelone,Mango,Kiwi,Avocado,Granatapfel,Feigen,Datteln,Mais',brot:'Brot,Vollkornbrot,Roggenbrot,Toast,Toastbrot,Brötchen,Toastbrötchen,Burgerbrötchen,Aufbackbrötchen,Baguette,Wraps,Tortillas,Croissants,Laugenbrezeln,Brezeln,Fladenbrot,Pita,Naan,Bagels,Knäckebrot,Zwieback,Kuchen,Muffins,Hefezopf',fleisch:'Hähnchenbrust,Hähnchenschenkel,Hähnchenflügel,Hähnchen ganz,Putenbrust,Putenschnitzel,Hackfleisch,Rinderhack,Rindfleisch,Rindersteak,Rinderfilet,Gulasch,Schweinefleisch,Schweinefilet,Schnitzel,Schweinebauch,Kassler,Lammfleisch,Wurst,Bratwurst,Würstchen,Wiener,Schinken,Kochschinken,Salami,Leberwurst,Aufschnitt,Bacon,Speck,Lachs,Lachsfilet,Räucherlachs,Thunfisch,Forelle,Kabeljau,Seelachs,Garnelen,Scampi,Hering,Matjes,Tintenfisch,Dorade,Pangasius,Sardinen,Makrele',milch:'Milch,Hafermilch,Sojamilch,Mandelmilch,Eier,Butter,Margarine,Joghurt,Naturjoghurt,Griechischer Joghurt,Proteinjoghurt,Skyr,Magerquark,Quark,Sahne,Schlagsahne,Schmand,Crème fraîche,Saure Sahne,Frischkäse,Käse,Gouda,Emmentaler,Edamer,Mozzarella,Parmesan,Feta,Camembert,Hüttenkäse,Halloumi,Reibekäse,Käsescheiben,Ricotta,Mascarpone,Gorgonzola,Ziegenkäse,Kondensmilch,Buttermilch,Kefir,Pudding,Milchreis',nudeln:'Nudeln,Spaghetti,Penne,Fusilli,Spirelli,Tagliatelle,Lasagneplatten,Gnocchi,Reisnudeln,Instant-Nudeln,Reis,Basmatireis,Vollkornreis,Risotto-Reis,Couscous,Bulgur,Quinoa,Haferflocken,Mehl,Zucker,Puderzucker,Vanillezucker,Backpulver,Hefe,Speisestärke,Grieß,Paniermehl,Backkakao,Linsen,Kidneybohnen,Kichererbsen,Weiße Bohnen,Mais Dose,Erbsen Dose,Passierte Tomaten,Stückige Tomaten,Tomatenmark,Kokosmilch,Thunfisch Dose,Ravioli,Fertigsuppe,Kartoffelpüree,Semmelknödel,Rosinen,Mandeln,Walnüsse,Cashewkerne,Erdnüsse,Haselnüsse,Sonnenblumenkerne,Kürbiskerne,Leinsamen,Chiasamen',fruh:'Müsli,Granola,Knuspermüsli,Cornflakes,Porridge,Marmelade,Honig,Nutella,Erdnussbutter,Mandelmus,Ahornsirup,Agavendicksaft,Kaffee,Kaffeebohnen,Kaffeepads,Filterkaffee,Kaffeesahne,Tee,Grüner Tee,Kräutertee,Kakao,Süßstoff,Proteinpulver,Proteinriegel,Müsliriegel',snack:'Chips,Tortilla-Chips,Erdnussflips,Popcorn,Salzstangen,Cracker,Reiswaffeln,Waffeln,Schokolade,Zartbitterschokolade,Schokoriegel,Riegel,Pralinen,Gummibärchen,Haribo,Fruchtgummi,Lakritz,Marshmallows,Bonbons,Kaugummi,Nüsse,Studentenfutter,Kekse',gewuerz:'Olivenöl,Rapsöl,Sonnenblumenöl,Kokosöl,Sesamöl,Öl,Salz,Pfeffer,Paprikapulver,Curry,Currypulver,Kurkuma,Kreuzkümmel,Zimt,Muskat,Oregano,Majoran,Chilipulver,Chiliflocken,Knoblauchpulver,Zwiebelpulver,Gewürzmischung,Lorbeer,Vanille,Essig,Balsamico,Ketchup,Senf,Honigsenf,Mayonnaise,Remoulade,Sojasoße,Worcestersoße,Sriracha,Tabasco,Sambal,Brühe,Gemüsebrühe,Hühnerbrühe,Pesto,Grillsoße,Salatdressing,Tomatensoße,Pastasoße,Tahini,Hummus,Meerrettich',haus:'Toilettenpapier,Küchenrolle,Taschentücher,Feuchttücher,Spülmittel,Spülmaschinentabs,Waschmittel,Weichspüler,Putzmittel,Glasreiniger,WC-Reiniger,Schwämme,Müllbeutel,Gefrierbeutel,Frischhaltefolie,Alufolie,Backpapier,Zahnpasta,Zahnbürste,Zahnseide,Duschgel,Shampoo,Spülung,Seife,Deo,Rasierer,Rasierschaum,Handcreme,Bodylotion,Sonnencreme,Wattepads,Wattestäbchen,Pflaster,Tampons,Binden,Batterien,Glühbirnen,Kerzen,Katzenfutter,Hundefutter,Katzenstreu',getr:'Wasser,Mineralwasser,Sprudel,Stilles Wasser,Saft,Orangensaft,Apfelsaft,Apfelschorle,Cola,Cola Zero,Limo,Fanta,Sprite,Eistee,Tonic Water,Ginger Ale,Sirup,Energy Drink,Isotonisches Getränk,Proteinshake,Bier,Radler,Wein,Rotwein,Weißwein,Sekt,Spirituosen',tk:'Tiefkühlpizza,Tiefkühlgemüse,Tiefkühlbeeren,Tiefkühlspinat,Rahmspinat,Blattspinat,Mischgemüse,Gemüsepfanne,Tiefkühlfisch,Fischstäbchen,Tiefkühlhähnchen,Nuggets,Tiefkühlbrötchen,Tiefkühlgerichte,Pommes,Backofen-Pommes,Kroketten,Eiscreme,Eis'};
 const shDL=Object.entries(shD).flatMap(([c,t])=>t.split(',').map(n=>[n,c]));
 const shG=n=>{const l=n.trim().toLowerCase(),m=shDL.find(x=>x[0].toLowerCase()==l)||shDL.find(x=>x[0].length>3&&l.includes(x[0].toLowerCase()))||shDL.find(x=>l.length>2&&x[0].toLowerCase().includes(l));return m?m[1]:'son'};
 const shi=c=>`<i class="shc" style="background:${shK[c].c}"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${shK[c].p}</svg></i>`;
@@ -707,15 +709,223 @@ const phNM={cut:'Diät',keep:'Gewicht halten',gain:'Bulk'};
 const phAuto=(nk,ex)=>{const o=S.ph.filter(p=>!ex.includes(p)),ds=[...new Set(o.map(p=>p.k))];if(!ds.length)return'';const t=Date.parse(nk+'T12:00');let b=null,bd=1e18;ds.forEach(d=>{const x=Math.abs(Date.parse(d+'T12:00')-t);if(x<bd||(x==bd&&d<b)){bd=x;b=d}});return o.find(p=>p.k==b).pl};
 const phDay=()=>{const k=V.pdy&&V.pdy.k;if(!k)return'';const L=S.ph.filter(p=>p.k==k),pl=L[0]?L[0].pl:'',o=S.pd[k]||'';return `<div class="shbd" style="z-index:32" data-a="phq"></div><div class="shmd"><b>Fortschrittsbilder bearbeiten</b><label class="phl">Datum<input type="date" id="pdd" value="${k}"></label><label class="phl">Phase<select id="pdp"><option value="">Automatisch (aktuell: ${phNM[pl]||'–'})</option>${Object.entries(phNM).map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select></label><label class="phl">Abschnitt<select id="pda"><option value="">Automatisch</option>${[['a','Anfang'],['m','Mitte'],['e','Ende']].map(x=>`<option value="${x[0]}"${o==x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></label><div class="shbt"><button data-a="phq">Abbrechen</button><button data-a="phk">Speichern</button></div></div>`};
 const phSegPop=()=>V.pst?`<div class="shbd" style="z-index:32" data-a="phx2"></div><div class="shmd lp"><b>Phase ändern</b>${Object.entries(phNM).map(x=>`<div class="shm" data-a="phs2" data-v="${x[0]}">${x[1]}</div>`).join('')}</div>`:'';
+const D1=`Apfel|52|0.3|14|0.2
+Banane|95|1.1|23|0.2
+Orange|47|0.9|11.8|0.2
+Mandarine|46|0.8|10.6|0.3
+Birne|55|0.4|14|0.3
+Weintrauben|70|0.7|17|0.2
+Erdbeeren|32|0.7|7.7|0.3
+Himbeeren|43|1.3|5|0.3
+Heidelbeeren|42|0.7|9|0.6
+Brombeeren|43|1.3|8|0.5
+Kirschen|63|1.1|14|0.3
+Pfirsich|41|0.9|9|0.1
+Nektarine|44|1.1|10|0.3
+Pflaume|47|0.6|10|0.2
+Aprikose|43|0.9|9|0.1
+Ananas|55|0.5|12|0.2
+Wassermelone|36|0.6|8|0.2
+Honigmelone|54|0.5|12|0.1
+Mango|62|0.5|14|0.3
+Kiwi|51|1|10|0.6
+Avocado|160|2|2|14.5
+Grapefruit|42|0.7|9|0.2
+Granatapfel|74|1|17|0.5
+Feige|74|0.8|16|0.3
+Datteln getrocknet|280|2|65|0.5
+Rosinen|300|2.5|66|0.5
+Trockenaprikosen|240|3.5|48|0.5
+Kokosnuss|360|3.5|7|35
+Kartoffeln roh|71|2|15|0.1
+Kartoffeln gekocht|70|2|15|0.1
+Süßkartoffel|86|1.6|20|0.1
+Karotte|36|0.9|7.5|0.2
+Tomate|18|0.9|2.6|0.2
+Cherrytomaten|20|0.9|3|0.2
+Gurke|12|0.6|1.8|0.2
+Paprika rot|37|1|6.4|0.5
+Paprika grün|20|0.9|2.9|0.3
+Zucchini|19|1.6|2|0.4
+Aubergine|24|1|2.5|0.2
+Brokkoli|34|3.7|2.4|0.3
+Blumenkohl|25|2.5|2.3|0.3
+Spinat|23|2.6|0.6|0.4
+Eisbergsalat|13|1|2|0.2
+Feldsalat|14|1.8|0.7|0.4
+Rucola|27|2.6|2|0.7
+Kopfsalat|12|1.3|1.1|0.2
+Champignons|22|2.7|0.5|0.3
+Zwiebel|28|1.2|4.9|0.3
+Knoblauch|141|6|28|0.1
+Lauch|29|2.1|3.3|0.3
+Kohlrabi|24|2|3.7|0.1
+Rotkohl|27|1.5|3.5|0.2
+Weißkohl|25|1.4|3.6|0.2
+Spargel|18|1.9|2.3|0.1
+Mais Dose|80|2.5|14|1.2
+Erbsen|82|6|11|0.5
+Grüne Bohnen|31|2.4|4.8|0.2
+Rote Bete|43|1.6|8|0.1
+Sellerie|18|1.2|2.1|0.2
+Fenchel|19|1.2|2.3|0.2
+Radieschen|15|1.1|2|0.1
+Kürbis|26|1|4.8|0.1
+Ingwer|80|1.8|17|0.8
+Oliven grün|145|1|0.5|15
+Gewürzgurken|15|0.5|2.5|0.1
+Haferflocken|372|13.5|59|7
+Nudeln trocken|356|12.5|70|1.5
+Nudeln gekocht|140|5|27|0.9
+Vollkornnudeln trocken|345|13|62|2.5
+Reis roh|350|7|78|0.6
+Reis gekocht|130|2.7|28|0.3
+Vollkornreis gekocht|123|2.7|26|1
+Couscous gekocht|112|3.8|23|0.2
+Quinoa gekocht|120|4.4|21|1.9
+Bulgur gekocht|83|3.1|14|0.2
+Kartoffelpüree|90|2|14|3
+Pommes frites|270|3.5|36|13
+Weizenmischbrot|245|7.5|47|1.3
+Vollkornbrot|215|7|40|1.2
+Roggenbrot|210|6|41|1.2
+Toastbrot|265|8|49|3.3
+Brötchen|270|9|54|1.5
+Brezel|285|9|57|2
+Croissant|400|8|45|21
+Baguette|270|9|55|1.2
+Knäckebrot|340|10|62|1.5
+Reiswaffeln|385|8|80|2.8
+Cornflakes|375|7.5|83|0.9
+Müsli|365|9.5|62|7
+Granola|440|9|62|16
+Tortilla Wrap|310|8|52|7
+Weizenmehl|340|10|70|1
+Zucker|400|0|100|0
+Honig|305|0.4|75|0
+Marmelade|250|0.4|60|0.1
+Nutella|540|6|57|31
+Erdnussbutter|590|25|12|50
+Erdnüsse|590|26|9|49
+Mandeln|580|21|5|52
+Walnüsse|700|15|7|63
+Haselnüsse|640|14|10|62
+Cashewkerne|570|18|30|44
+Pistazien|600|20|17|50
+Sonnenblumenkerne|590|23|10|50
+Chiasamen|480|17|8|31
+Leinsamen|500|18|5|42
+Kürbiskerne|560|30|5|46
+Paranüsse|690|14|4|67
+Hähnchenbrust roh|110|23|0|1.5
+Hähnchenbrust gebraten|165|31|0|3.6
+Hähnchenschenkel|180|18|0|12
+Putenbrust|105|24|0|1
+Rinderhack|220|19|0|16
+Gemischtes Hackfleisch|260|17|0|21
+Rindersteak|150|21|0|7
+Rinderfilet|135|21|0|5
+Schweinefilet|110|22|0|2
+Schweineschnitzel|110|22|0|2
+Schweinebauch|330|14|0|30
+Bacon|380|14|0.5|37
+Kochschinken|110|19|1|3.5
+Salami|450|22|1|40
+Bratwurst|300|13|2|27
+Wiener Würstchen|270|12|2|24
+Leberwurst|330|12|2|30
+Lachs|200|20|0|13
+Thunfisch im eigenen Saft|110|25|0|1
+Thunfisch in Öl|200|25|0|11
+Forelle|120|19|0|4
+Kabeljau|80|18|0|0.7
+Garnelen|85|18|0.5|1
+Seelachs|90|19|0|1.2
+Hering|200|18|0|14
+Fischstäbchen|190|12|18|8
+Ei|140|12.5|0.7|9.5
+Eiklar|50|11|0.7|0.2
+Eigelb|350|16|0.3|31
+Vollmilch 3,5%|65|3.4|4.8|3.5
+Milch 1,5%|47|3.4|4.9|1.5
+Magermilch|35|3.4|4.9|0.1
+Hafermilch|45|0.4|6.5|1.5
+Sojamilch|40|3.5|2.5|1.9
+Mandelmilch|25|0.5|3|1.1
+Joghurt 3,5%|65|3.5|4.7|3.5
+Joghurt 1,5%|47|3.5|4.8|1.5
+Griechischer Joghurt|135|5|4|10
+Skyr|63|11|4|0.2
+Magerquark|67|12|4|0.3
+Quark 20%|110|11|3.5|5.5
+Quark 40%|140|9.5|3|11
+Hüttenkäse|98|12|3|4.3
+Frischkäse natur|240|6|3|23
+Frischkäse light|110|9|4|6
+Mozzarella|245|19|1|18
+Gouda|350|25|0|27
+Emmentaler|390|28|0|30
+Edamer|330|25|0|25
+Parmesan|400|36|0|28
+Feta|265|17|1|21
+Camembert|300|20|0|24
+Butter|740|0.7|0.6|83
+Margarine|720|0.2|0.4|80
+Sahne 30%|290|2.4|3.2|30
+Schmand|240|3|3.5|24
+Pudding|110|3|18|3
+Milchreis|130|3|22|3
+Cola|42|0|10.6|0
+Cola Zero|0|0|0|0
+Orangensaft|45|0.7|10|0.2
+Apfelsaft|46|0.1|11|0.1
+Apfelschorle|22|0|5|0
+Bier|43|0.5|3.5|0
+Rotwein|85|0.1|2.5|0
+Weißwein|75|0.1|2.5|0
+Kaffee schwarz|2|0.1|0.3|0
+Kakaogetränk|75|3.4|9|3
+Energy Drink|45|0|11|0
+Vollmilchschokolade|535|7.5|57|30
+Zartbitterschokolade 70%|580|8|35|42
+Gummibärchen|343|6.9|77|0.5
+Chips|540|6|50|35
+Salzstangen|370|10|75|2.5
+Butterkekse|450|7|75|13
+Müsliriegel|400|7|65|13
+Proteinriegel|370|33|35|10
+Vanilleeis|200|3.5|24|10
+Popcorn|390|12|78|4
+Tiefkühlpizza Salami|240|9|28|10
+Hummus|230|8|11|17
+Ketchup|110|1.5|25|0.1
+Mayonnaise|680|1.1|2|75
+Senf|80|5|6|4
+Olivenöl|900|0|0|100
+Rapsöl|900|0|0|100
+Kokosöl|900|0|0|100
+Sojasoße|60|8|5|0
+Pesto|440|5|6|44
+Linsen gekocht|115|9|17|0.5
+Kidneybohnen Dose|95|7|13|0.5
+Kichererbsen Dose|120|7|17|2.5
+Weiße Bohnen Dose|95|6.5|14|0.5
+Tofu|120|13|1.5|7
+Tempeh|190|19|9|11
+Edamame|120|11|9|5
+Proteinpulver|380|75|8|6`;
+D1.trim().split('\n').forEach((l,i)=>{const a=l.split('|');if(a.length<5)return;const n=a[0].trim();if(!S.foods.some(f=>f.n.toLowerCase()==n.toLowerCase()))S.foods.push({id:'b'+i,n,k:+a[1],p:+a[2],c:+a[3],f:+a[4]})});
 Object.assign(IC,{barcode:'<path d="M4 6v12M7 6v12M11 6v12M14 6v12M17 6v12M20 6v12"/>'});
 function bcClose(){const o=$('#bcv');if(o){const v=o.querySelector('video');if(v&&v.srcObject)v.srcObject.getTracks().forEach(t=>t.stop());clearInterval(o._t);o.remove()}}
 async function bcOpen(){bcClose();const o=document.createElement('div');o.id='bcv';o.className='bcv';o.innerHTML='<video autoplay playsinline muted></video><div class="bcf"></div><div class="bcb"><p id="bcs">Halte den Barcode in den Rahmen</p><div class="bcr"><input id="bcm" inputmode="numeric" placeholder="oder Nummer eintippen"><button id="bcg">OK</button></div><button id="bcx">Schließen</button></div>';document.body.appendChild(o);
 $('#bcx').onclick=bcClose;$('#bcg').onclick=()=>{const c=$('#bcm').value.replace(/\D/g,'');if(c.length>=8){bcClose();bcFind(c)}};
 if(!('BarcodeDetector' in window)){$('#bcs').textContent='Dieser Browser kann Barcodes nicht lesen. Tippe die Nummer ein.';return}
-try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}),v=o.querySelector('video');v.srcObject=st;const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});let busy=0;o._t=setInterval(async()=>{if(busy||v.readyState<2)return;busy=1;try{const r=await det.detect(v);if(r.length){const c=r[0].rawValue;bcClose();bcFind(c)}}catch(e){}busy=0},300)}catch(e){$('#bcs').textContent='Kamera nicht verfügbar: '+((e&&e.name)||e)}}
+try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}},audio:false}),v=o.querySelector('video');v.srcObject=st;try{st.getVideoTracks()[0].applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{})}catch(e){}const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});let busy=0;o._t=setInterval(async()=>{if(busy||v.readyState<2)return;busy=1;try{const r=await det.detect(v);if(r.length){const c=r[0].rawValue;bcClose();bcFind(c)}}catch(e){}busy=0},200)}catch(e){$('#bcs').textContent='Kamera nicht verfügbar: '+((e&&e.name)||e)}}
 async function bcFind(c){const mt=(topv()||{}).m,loc=S.foods.find(f=>f.bc==c);if(loc){V.st.push({t:'food',mode:'new',fid:loc.id,amt:100,meal:mt});save();render();sync();return}
 shToast('Suche Produkt …',3000);try{const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+c+'.json?fields=product_name,brands,nutriments'),j=await r.json();if(j.status==1&&j.product){const p=j.product,m=p.nutriments||{},g=k=>m[k+'_100g']!=null?Math.round(m[k+'_100g']*10)/10:'';let k=m['energy-kcal_100g'];if(k==null&&m['energy_100g']!=null)k=m['energy_100g']/4.184;V.st.push({t:'nf',bc:c,v:{n:((p.product_name||'')+(p.brands?' ('+p.brands.split(',')[0]+')':'')).trim(),k:k==null?'':Math.round(k),p:g('proteins'),c:g('carbohydrates'),f:g('fat')}});save();render();sync();shToast('Bitte Werte prüfen und speichern',3500);return}}catch(e){shToast('Keine Verbindung zu Open Food Facts',3500);return}
 shToast('Produkt nicht gefunden. Du kannst es selbst anlegen.',3500);V.st.push({t:'nf',bc:c,v:{n:'',k:'',p:'',c:'',f:''}});save();render();sync()}
+function offNf(p){const m=p.nutriments||{},g=k=>m[k+'_100g']!=null?Math.round(m[k+'_100g']*10)/10:'';let k=m['energy-kcal_100g'];if(k==null&&m.energy_100g!=null)k=m.energy_100g/4.184;V.st.push({t:'nf',bc:p.code||'',v:{n:((p.product_name||'')+(p.brands?' ('+p.brands.split(',')[0]+')':'')).trim(),k:k==null?'':Math.round(k),p:g('proteins'),c:g('carbohydrates'),f:g('fat')}})}
+async function offSearch(q){shToast('Suche online …',3000);try{const rs=await fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=25&lc=de&tagtype_0=countries&tag_contains_0=contains&tag_0=germany&fields=code,product_name,brands,nutriments'),j=await rs.json(),P=(j.products||[]).filter(p=>p.product_name&&p.nutriments&&(p.nutriments['energy-kcal_100g']!=null||p.nutriments.energy_100g!=null)).slice(0,15);if(!P.length){shToast('Nichts gefunden. Probiere einen anderen Begriff.',3500);return}V.of=P;const e=$('#res');if(e)e.innerHTML=P.map((p,i)=>`<div class="row" data-a="offp" data-n="${i}"><div><b>${esc(p.product_name)}</b><small>${esc((p.brands||'').split(',')[0])} · ${r(p.nutriments['energy-kcal_100g']!=null?p.nutriments['energy-kcal_100g']:p.nutriments.energy_100g/4.184)} kcal je 100 g</small></div></div>`).join('')}catch(e){shToast('Keine Verbindung zu Open Food Facts',3500)}}
 function phSec(blue){const days={};S.ph.slice().sort((a,b)=>a.t-b.t).forEach(p=>(days[p.k]=days[p.k]||[]).push(p));const ks=Object.keys(days).sort(),NM={cut:'Diät',gain:'Bulk',keep:'Gewicht halten'},seg=[],sd=k=>new Date(k+'T12:00').toLocaleDateString('de-DE',{day:'numeric',month:'short'}),dd=k=>new Date(k+'T12:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 ks.forEach(k=>{const pl=days[k][0].pl||'keep',l=seg[seg.length-1];if(l&&l.pl==pl)l.d.push(k);else seg.push({pl,d:[k]})});
 const cnt={};seg.forEach((x,i)=>{cnt[x.pl]=(cnt[x.pl]||0)+1;x.n=cnt[x.pl];x.id=x.pl+x.n;x.st=(i==seg.length-1&&S.pr.ps&&S.pr.ps<=x.d[0])?S.pr.ps:x.d[0];x.c=x.d.reduce((a,k)=>a+days[k].length,0)});
